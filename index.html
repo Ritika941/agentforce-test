@@ -257,6 +257,18 @@
 </head>
 <body>
  <script src="chat.js"></script>
+   <script>
+  window.pageContext = {
+    page: "home",
+    title: "Home",
+    data: {
+      bookingId: "ABC123",
+      status: "Confirmed"
+    }
+  };
+
+  loadPageData();
+</script>
 
   <!-- NAV -->
 <nav>
