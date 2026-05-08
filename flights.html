@@ -1,36 +1,56 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
+
 <head>
-  <title>Flights</title>
+    <meta charset="UTF-8">
+    <title>Flights</title>
+
+    <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
 
 <nav>
-  <a href="index.html">Home</a>
-  <a href="flights.html">Flights</a>
-  <a href="booking.html">Booking</a>
+    <a href="index.html">Home</a>
+    <a href="flights.html">Flights</a>
+    <a href="booking.html">Booking</a>
 </nav>
 
-<h1>Flights Page</h1>
+<div class="container">
 
-<div id="flight-data"></div>
+    <h1>Flights</h1>
 
-<script src="app.js"></script>
-<script src="chat.js"></script>
+    <div class="card">
+        <h3>Available Flight</h3>
+
+        <p>
+            Delhi → Mumbai
+        </p>
+
+        <p>
+            Price: ₹5000
+        </p>
+    </div>
+
+</div>
+
 <script>
-  // Page context
-  window.pageContext = {
-    page: "flights",
-    title: "Flights",
-    data: {
-      from: "Delhi",
-      to: "Mumbai",
-      price: "₹5000"
-    }
-  };
+window.pageContext = {
 
-  loadPageData();
+    page: "flights",
+
+    title: "Flights Page",
+
+    data: {
+        from: "Delhi",
+        to: "Mumbai",
+        airline: "Air India",
+        price: "₹5000"
+    }
+};
 </script>
+
+<script src="chat.js"></script>
 
 </body>
 </html>

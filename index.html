@@ -1,458 +1,59 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Search</title>
-  <link href="https://fonts.googleapis.com/css2?family=Product+Sans:wght@400;700&family=Roboto:wght@300;400;500&display=swap" rel="stylesheet"/>
-  <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    <meta charset="UTF-8">
+    <title>Airlines Portal</title>
 
-    :root {
-      --blue: #4285f4;
-      --red: #ea4335;
-      --yellow: #fbbc05;
-      --green: #34a853;
-      --text: #202124;
-      --subtext: #5f6368;
-      --border: #dfe1e5;
-      --hover-bg: #f8f9fa;
-      --shadow: rgba(32,33,36,.28);
-    }
-
-    body {
-      font-family: 'Roboto', sans-serif;
-      background: #fff;
-      color: var(--text);
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-    }
-
-    /* ── NAV ── */
-    nav {
-      display: flex;
-      justify-content: flex-end;
-      align-items: center;
-      padding: 12px 20px;
-      gap: 16px;
-    }
-
-    nav a {
-      font-size: 13px;
-      color: var(--text);
-      text-decoration: none;
-    }
-
-    nav a:hover { text-decoration: underline; }
-
-    .nav-signin {
-      background: var(--blue);
-      color: #fff !important;
-      padding: 9px 22px;
-      border-radius: 4px;
-      font-size: 14px;
-      font-weight: 500;
-      text-decoration: none !important;
-      transition: background .2s, box-shadow .2s;
-    }
-
-    .nav-signin:hover {
-      background: #3367d6;
-      box-shadow: 0 1px 3px rgba(0,0,0,.3);
-      text-decoration: none !important;
-    }
-
-    /* ── MAIN ── */
-    main {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      padding-bottom: 120px;
-      gap: 28px;
-    }
-
-    /* ── LOGO ── */
-    .logo {
-      font-family: 'Product Sans', 'Roboto', sans-serif;
-      font-size: clamp(48px, 10vw, 92px);
-      font-weight: 700;
-      letter-spacing: -2px;
-      user-select: none;
-      animation: fadeDown .5s ease both;
-    }
-
-    .logo span:nth-child(1) { color: var(--blue); }
-    .logo span:nth-child(2) { color: var(--red); }
-    .logo span:nth-child(3) { color: var(--yellow); }
-    .logo span:nth-child(4) { color: var(--blue); }
-    .logo span:nth-child(5) { color: var(--green); }
-    .logo span:nth-child(6) { color: var(--red); }
-
-    /* ── SEARCH BOX ── */
-    .search-wrap {
-      width: min(584px, 92vw);
-      animation: fadeUp .5s .1s ease both;
-    }
-
-    .search-box {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      border: 1px solid var(--border);
-      border-radius: 24px;
-      padding: 10px 18px;
-      background: #fff;
-      transition: box-shadow .2s, border-color .2s;
-    }
-
-    .search-box:hover,
-    .search-box:focus-within {
-      box-shadow: 0 2px 12px var(--shadow);
-      border-color: transparent;
-    }
-
-    .search-icon {
-      flex-shrink: 0;
-      color: var(--subtext);
-    }
-
-    #query {
-      flex: 1;
-      border: none;
-      outline: none;
-      font-family: 'Roboto', sans-serif;
-      font-size: 16px;
-      color: var(--text);
-      background: transparent;
-      caret-color: var(--blue);
-    }
-
-    #query::placeholder { color: transparent; }
-
-    .mic-btn {
-      background: none;
-      border: none;
-      cursor: pointer;
-      padding: 4px;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      transition: background .15s;
-    }
-
-    .mic-btn:hover { background: var(--hover-bg); }
-
-    /* ── SUGGESTIONS ── */
-    .suggestions {
-      background: #fff;
-      border: 1px solid var(--border);
-      border-top: none;
-      border-radius: 0 0 24px 24px;
-      box-shadow: 0 4px 12px var(--shadow);
-      overflow: hidden;
-      display: none;
-    }
-
-    .search-box:focus-within ~ .suggestions { display: block; }
-
-    .suggestion-item {
-      display: flex;
-      align-items: center;
-      gap: 14px;
-      padding: 10px 18px;
-      cursor: pointer;
-      transition: background .15s;
-      font-size: 14px;
-      color: var(--text);
-    }
-
-    .suggestion-item:hover { background: var(--hover-bg); }
-
-    .suggestion-item svg { flex-shrink: 0; color: var(--subtext); }
-
-    /* ── BUTTONS ── */
-    .btn-row {
-      display: flex;
-      gap: 10px;
-      flex-wrap: wrap;
-      justify-content: center;
-      animation: fadeUp .5s .2s ease both;
-    }
-
-    .btn {
-      background: var(--hover-bg);
-      border: 1px solid var(--hover-bg);
-      border-radius: 4px;
-      padding: 10px 20px;
-      font-family: 'Roboto', sans-serif;
-      font-size: 14px;
-      color: var(--text);
-      cursor: pointer;
-      transition: border-color .2s, box-shadow .2s, background .2s;
-    }
-
-    .btn:hover {
-      border-color: var(--border);
-      box-shadow: 0 1px 3px rgba(0,0,0,.1);
-      background: #f0f0f0;
-    }
-
-    /* ── LANGUAGE ── */
-    .lang {
-      font-size: 13px;
-      color: var(--subtext);
-      animation: fadeUp .5s .3s ease both;
-    }
-
-    .lang a { color: var(--blue); text-decoration: none; }
-    .lang a:hover { text-decoration: underline; }
-
-    /* ── FOOTER ── */
-    footer {
-      background: var(--hover-bg);
-      border-top: 1px solid var(--border);
-      font-size: 14px;
-      color: var(--subtext);
-    }
-
-    .footer-top, .footer-bottom {
-      display: flex;
-      align-items: center;
-      padding: 14px 24px;
-      gap: 20px;
-      flex-wrap: wrap;
-    }
-
-    .footer-top { border-bottom: 1px solid var(--border); }
-
-    .footer-bottom { justify-content: space-between; }
-
-    footer a {
-      color: var(--subtext);
-      text-decoration: none;
-      transition: color .15s;
-    }
-
-    footer a:hover { color: var(--blue); text-decoration: underline; }
-
-    /* ── KEYFRAMES ── */
-    @keyframes fadeDown {
-      from { opacity: 0; transform: translateY(-20px); }
-      to   { opacity: 1; transform: translateY(0); }
-    }
-
-    @keyframes fadeUp {
-      from { opacity: 0; transform: translateY(16px); }
-      to   { opacity: 1; transform: translateY(0); }
-    }
-
-    /* ── RESPONSIVE ── */
-    @media (max-width: 480px) {
-      .footer-bottom { flex-direction: column; align-items: flex-start; gap: 10px; }
-    }
-  </style>
+    <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
- <script src="chat.js"></script>
-   <script>
-  window.pageContext = {
-    page: "home",
-    title: "Home",
-    data: {
-      bookingId: "ABC123",
-      status: "Confirmed"
-    }
-  };
 
-</script>
-
-  <!-- NAV -->
 <nav>
-  <a href="index.html">Home</a>
-  <a href="flights.html">Flights</a>
-  <a href="booking.html">Booking</a>
+    <a href="index.html">Home</a>
+    <a href="flights.html">Flights</a>
+    <a href="booking.html">Booking</a>
 </nav>
 
-  <!-- MAIN -->
-  <main>
-    <!-- Logo -->
-    <div class="logo" aria-label="Search">
-      <span>S</span><span>e</span><span>a</span><span>r</span><span>c</span><span>h</span>
+<div class="container">
+
+    <h1>Welcome to Airlines Portal</h1>
+
+    <div class="card">
+        <h3>About Us</h3>
+
+        <p>
+            We provide domestic and international flights
+            with affordable pricing and premium support.
+        </p>
     </div>
 
-    <!-- Search -->
-    <div class="search-wrap">
-      <div class="search-box">
-        <!-- Search icon -->
-        <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
-        </svg>
+    <div class="card">
+        <h3>Support Information</h3>
 
-        <input id="query" type="text" autocomplete="off" spellcheck="false"
-               placeholder="Search the web"
-               aria-label="Search"
-               oninput="updateSuggestions(this.value)"
-               onkeydown="handleKey(event)"/>
-
-        <!-- Mic icon -->
-        <button class="mic-btn" aria-label="Search by voice" onclick="startVoice()">
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#4285f4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
-            <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
-            <line x1="12" y1="19" x2="12" y2="23"/>
-            <line x1="8" y1="23" x2="16" y2="23"/>
-          </svg>
-        </button>
-      </div>
-
-      <!-- Suggestions dropdown -->
-      <div class="suggestions" id="suggestions" role="listbox"></div>
+        <p>
+            Customers can search flights, manage bookings,
+            cancel tickets, and track booking status.
+        </p>
     </div>
 
-    <!-- Buttons -->
-    <div class="btn-row">
-      <button class="btn" onclick="doSearch()">Web Search</button>
-      <button class="btn" onclick="doFeeling()">I'm Feeling Lucky</button>
-    </div>
+</div>
 
-    <!-- Language -->
-    <div class="lang">
-      Search offered in:
-      <a href="#">हिन्दी</a> &nbsp;
-      <a href="#">বাংলা</a> &nbsp;
-      <a href="#">తెలుగు</a> &nbsp;
-      <a href="#">मराठी</a> &nbsp;
-      <a href="#">தமிழ்</a>
-    </div>
-  </main>
+<script>
+window.pageContext = {
+    page: "home",
+    title: "Home Page",
 
-  <!-- FOOTER -->
-  <footer>
-    <div class="footer-top">
-      <span>India</span>
-    </div>
-    <div class="footer-bottom">
-      <div style="display:flex;gap:20px;flex-wrap:wrap;">
-        <a href="#">About</a>
-        <a href="#">Advertising</a>
-        <a href="#">Business</a>
-        <a href="#">How Search works</a>
-      </div>
-      <div style="display:flex;gap:20px;flex-wrap:wrap;">
-        <a href="#">Privacy</a>
-        <a href="#">Terms</a>
-        <a href="#">Settings</a>
-      </div>
-    </div>
-  </footer>
-
-  <script>
-    // ── Sample suggestions ──
-    const pool = [
-      "weather today", "news", "translate", "maps", "youtube",
-      "how to learn javascript", "best restaurants near me",
-      "cricket score", "stock market", "python tutorial",
-      "what is machine learning", "how to make pizza",
-      "time in new york", "currency converter", "wikipedia"
-    ];
-
-    const suggestionsEl = document.getElementById('suggestions');
-    const input = document.getElementById('query');
-    let activeIdx = -1;
-    let filtered = [];
-
-    function updateSuggestions(val) {
-      activeIdx = -1;
-      if (!val.trim()) { suggestionsEl.innerHTML = ''; return; }
-
-      filtered = pool.filter(s => s.toLowerCase().includes(val.toLowerCase())).slice(0, 6);
-
-      // Add the typed query itself at top if not already present
-      if (!filtered.includes(val)) filtered.unshift(val);
-      filtered = filtered.slice(0, 7);
-
-      suggestionsEl.innerHTML = filtered.map((s, i) => `
-        <div class="suggestion-item" role="option" data-idx="${i}"
-             onmousedown="selectSuggestion('${s.replace(/'/g,"\\'")}')">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
-               fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
-          </svg>
-          ${escHtml(s)}
-        </div>`).join('');
+    data: {
+        company: "Airlines Portal",
+        supportEmail: "support@airlines.com",
+        supportNumber: "+91 9876543210"
     }
+};
+</script>
 
-    function selectSuggestion(val) {
-      input.value = val;
-      suggestionsEl.innerHTML = '';
-      doSearch();
-    }
+<script src="chat.js"></script>
 
-    function handleKey(e) {
-      const items = suggestionsEl.querySelectorAll('.suggestion-item');
-      if (e.key === 'ArrowDown') {
-        activeIdx = Math.min(activeIdx + 1, items.length - 1);
-        highlight(items);
-      } else if (e.key === 'ArrowUp') {
-        activeIdx = Math.max(activeIdx - 1, -1);
-        highlight(items);
-      } else if (e.key === 'Enter') {
-        if (activeIdx >= 0 && filtered[activeIdx]) {
-          input.value = filtered[activeIdx];
-          suggestionsEl.innerHTML = '';
-        }
-        doSearch();
-      } else if (e.key === 'Escape') {
-        suggestionsEl.innerHTML = '';
-      }
-    }
-
-    function highlight(items) {
-      items.forEach((el, i) => {
-        el.style.background = i === activeIdx ? 'var(--hover-bg)' : '';
-      });
-      if (activeIdx >= 0 && filtered[activeIdx]) input.value = filtered[activeIdx];
-    }
-
-    function doSearch() {
-      const q = input.value.trim();
-      if (!q) return;
-      window.open(`https://www.google.com/search?q=${encodeURIComponent(q)}`, '_blank');
-    }
-
-    function doFeeling() {
-      const q = input.value.trim();
-      const url = q
-        ? `https://www.google.com/search?q=${encodeURIComponent(q)}&btnI=1`
-        : `https://www.google.com/search?q=${encodeURIComponent(pool[Math.floor(Math.random()*pool.length)])}&btnI=1`;
-      window.open(url, '_blank');
-    }
-
-    function startVoice() {
-      if (!('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) {
-        alert('Voice search is not supported in this browser. Try Chrome!');
-        return;
-      }
-      const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-      const rec = new SR();
-      rec.lang = 'en-IN';
-      rec.onresult = e => {
-        input.value = e.results[0][0].transcript;
-        updateSuggestions(input.value);
-      };
-      rec.start();
-    }
-
-    function escHtml(s) {
-      return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-    }
-  </script>
 </body>
 </html>
-
-
-
-

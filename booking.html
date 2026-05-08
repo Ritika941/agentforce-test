@@ -1,34 +1,55 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
+
 <head>
-  <title>Booking</title>
+    <meta charset="UTF-8">
+    <title>Booking</title>
+
+    <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
 
 <nav>
-  <a href="index.html">Home</a>
-  <a href="flights.html">Flights</a>
-  <a href="booking.html">Booking</a>
+    <a href="index.html">Home</a>
+    <a href="flights.html">Flights</a>
+    <a href="booking.html">Booking</a>
 </nav>
 
-<h1>Booking Page</h1>
+<div class="container">
 
-<div id="booking-data"></div>
+    <h1>Booking Details</h1>
 
-<script src="app.js"></script>
-<script src="chat.js"></script>
+    <div class="card">
+
+        <p>
+            Booking ID: ABC123
+        </p>
+
+        <p>
+            Status: Confirmed
+        </p>
+
+    </div>
+
+</div>
+
 <script>
-  window.pageContext = {
-    page: "booking",
-    title: "Booking",
-    data: {
-      bookingId: "ABC123",
-      status: "Confirmed"
-    }
-  };
+window.pageContext = {
 
-  loadPageData();
+    page: "booking",
+
+    title: "Booking Page",
+
+    data: {
+        bookingId: "ABC123",
+        status: "Confirmed",
+        passenger: "John Doe"
+    }
+};
 </script>
+
+<script src="chat.js"></script>
 
 </body>
 </html>
