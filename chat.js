@@ -7,11 +7,13 @@
 // Extract visible page text
 // -------------------------------
 function getPageContent() {
+    const contextDiv = document.getElementById('agent-context');
+    if (contextDiv) return contextDiv.innerText.trim();
+
     const clone = document.body.cloneNode(true);
     ['script', 'style', 'nav', 'footer', 'header', 'noscript']
         .forEach(tag => clone.querySelectorAll(tag).forEach(el => el.remove()));
-    return (clone.innerText || clone.textContent || '')
-        .replace(/\s+/g, ' ').trim().substring(0, 1000);
+    return (clone.innerText || '').replace(/\s+/g, ' ').trim().substring(0, 1000);
 }
 
 
@@ -20,116 +22,129 @@ function getPageContent() {
 // -------------------------------
 function buildContextString() {
     const pageCtx = window.pageContext || {};
-    return `[SYSTEM CONTEXT]\n` +
-           `Page: ${pageCtx.title || document.title}\n` +
-           `URL: ${window.location.href}\n` +
-           `Data: ${JSON.stringify(pageCtx.data || {})}\n` +
-           `Content: ${getPageContent()}\n` +
-           `[END CONTEXT]\n` +
-           `Use only the above to answer user questions. Do not say information is unavailable if it exists above.`;
+    return '[SYSTEM CONTEXT]\n' +
+           'Page: '    + (pageCtx.title || document.title)      + '\n' +
+           'URL: '     + window.location.href                    + '\n' +
+           'Data: '    + JSON.stringify(pageCtx.data || {})      + '\n' +
+           'Content: ' + getPageContent()                        + '\n' +
+           '[END CONTEXT]\n' +
+           'Use only the above to answer. Never say info is unavailable if it exists above.';
 }
 
 
 // -------------------------------
-// Type into chat iframe and submit
+// Discover + log all bootstrap APIs
 // -------------------------------
-function injectContextViaIframe() {
-    console.log('🔁 Starting iframe injection...');
-
-    let attempts = 0;
-
-    const interval = setInterval(function () {
-        attempts++;
-
-        // Give up after 10 seconds
-        if (attempts > 33) {
-            clearInterval(interval);
-            console.error('❌ Could not find chat input after 10s');
-            return;
-        }
-
-        // Search all iframes on the page
-        const iframes = document.querySelectorAll('iframe');
-        console.log(`🔍 Attempt ${attempts}: found ${iframes.length} iframe(s)`);
-
-        for (let i = 0; i < iframes.length; i++) {
-            let doc;
-            try {
-                doc = iframes[i].contentDocument || iframes[i].contentWindow.document;
-            } catch (e) {
-                console.warn(`⚠️ iframe[${i}] is cross-origin — cannot access DOM`);
-                continue;
+function logBootstrapAPIs() {
+    console.log('--- Bootstrap API Discovery ---');
+    const b = embeddedservice_bootstrap;
+    console.log('Top-level keys:', Object.keys(b).join(', '));
+    Object.keys(b).forEach(function(key) {
+        try {
+            if (b[key] && typeof b[key] === 'object') {
+                const methods = Object.keys(b[key]).filter(k => typeof b[key][k] === 'function');
+                if (methods.length) console.log(key + '() methods:', methods.join(', '));
             }
-
-            if (!doc) continue;
-
-            // Find the text input inside the chat
-            const input = doc.querySelector(
-                'textarea, input[type="text"], [contenteditable="true"]'
-            );
-
-            if (!input) continue;
-
-            clearInterval(interval);
-            console.log(`✅ Found chat input in iframe[${i}]`);
-
-            const context = buildContextString();
-
-            // Set value using native setter (works with React/LWC frameworks)
-            try {
-                const proto = iframes[i].contentWindow.HTMLTextAreaElement?.prototype
-                           || iframes[i].contentWindow.HTMLInputElement?.prototype;
-                const setter = proto
-                    ? Object.getOwnPropertyDescriptor(proto, 'value')?.set
-                    : null;
-
-                if (setter) {
-                    setter.call(input, context);
-                } else {
-                    input.value = context;
-                }
-            } catch (e) {
-                input.value = context;
-            }
-
-            // Trigger input events so the framework registers the value
-            input.dispatchEvent(new Event('focus',  { bubbles: true }));
-            input.dispatchEvent(new Event('input',  { bubbles: true }));
-            input.dispatchEvent(new Event('change', { bubbles: true }));
-
-            // Submit after short delay
-            setTimeout(function () {
-                // Try clicking the Send button first
-                const sendBtn = doc.querySelector(
-                    'button[title*="Send"], button[aria-label*="Send"], ' +
-                    'button[type="submit"], button.send-button, ' +
-                    '[data-key="send"], button[name="send"]'
-                );
-
-                if (sendBtn) {
-                    sendBtn.click();
-                    console.log('✅ Context submitted via Send button');
-                } else {
-                    // Fallback — simulate Enter key
-                    input.dispatchEvent(new KeyboardEvent('keydown', {
-                        key: 'Enter', keyCode: 13, bubbles: true, cancelable: true
-                    }));
-                    input.dispatchEvent(new KeyboardEvent('keyup', {
-                        key: 'Enter', keyCode: 13, bubbles: true
-                    }));
-                    console.log('✅ Context submitted via Enter key');
-                }
-            }, 600);
-
-            return; // found and handled
-        }
-
-    }, 300);
+        } catch(e) {}
+    });
+    console.log('--- End Discovery ---');
 }
 
 
 // -------------------------------
-// Trigger injection when chat opens
+// Try every known Salesforce API
+// to send a message
+// -------------------------------
+function trySalesforceAPIs(text) {
+    const b = embeddedservice_bootstrap;
+
+    const attempts = [
+        // Agentforce / MIAW APIs
+        () => b.utilAPI.sendMessage(text),
+        () => b.utilAPI.sendTextMessage(text),
+        () => b.utilAPI.sendChatMessage(text),
+        () => b.utilAPI.sendUserMessage(text),
+        // Older Live Agent APIs
+        () => b.liveAgentAPI.sendMessage(text),
+        () => b.liveAgentAPI.sendUserMessage(text),
+        // Message-specific APIs
+        () => b.messageAPI.sendMessage(text),
+        () => b.chatAPI.sendMessage(text),
+        // Direct on bootstrap
+        () => b.sendMessage(text),
+        () => b.sendChatMessage(text),
+    ];
+
+    for (let i = 0; i < attempts.length; i++) {
+        try {
+            attempts[i]();
+            console.log('✅ Context sent via method #' + (i + 1));
+            return true;
+        } catch(e) {
+            // silently try next
+        }
+    }
+    return false;
+}
+
+
+// -------------------------------
+// postMessage to all iframes
+// (works cross-origin)
+// -------------------------------
+function tryPostMessage(text) {
+    console.log('📨 Trying postMessage to all iframes...');
+
+    const iframes = document.querySelectorAll('iframe');
+    const targets = [
+        'https://orgfarm-3a2cf22c1a-dev-ed.develop.my.site.com',
+        'https://orgfarm-3a2cf22c1a-dev-ed.develop.my.salesforce-scrt.com',
+        '*'  // fallback broadcast
+    ];
+
+    iframes.forEach(function(iframe, idx) {
+        targets.forEach(function(origin) {
+            try {
+                iframe.contentWindow.postMessage({
+                    type: 'EmbeddedMessaging.SendMessage',
+                    message: text,
+                    source: 'websiteContext'
+                }, origin);
+                console.log('📨 postMessage sent to iframe[' + idx + '] → ' + origin);
+            } catch(e) {}
+        });
+    });
+
+    // Also try posting to the parent Salesforce domain directly
+    try {
+        window.postMessage({ type: 'EmbeddedMessaging.SendMessage', message: text }, '*');
+    } catch(e) {}
+}
+
+
+// -------------------------------
+// Main injection function
+// -------------------------------
+function injectContext() {
+    const text = buildContextString();
+    console.log('📦 Context to inject:\n', text);
+
+    // Step 1: try official Salesforce APIs
+    const sent = trySalesforceAPIs(text);
+    if (sent) return;
+
+    // Step 2: try postMessage cross-origin
+    tryPostMessage(text);
+
+    // Step 3: log all APIs so we can identify the correct method
+    console.warn('⚠️ Could not inject via API — see discovery below:');
+    logBootstrapAPIs();
+    console.warn('👆 Share the above with your developer to identify the correct send method.');
+}
+
+
+// -------------------------------
+// Fire on conversation start
 // -------------------------------
 function injectContextOnConversationStart() {
     let injected = false;
@@ -137,9 +152,8 @@ function injectContextOnConversationStart() {
     window.addEventListener('onEmbeddedMessagingConversationStarted', function () {
         if (injected) return;
         injected = true;
-        console.log('💬 Conversation started — injecting page context via iframe...');
-        // Wait for iframe to fully render before injecting
-        setTimeout(injectContextViaIframe, 1000);
+        console.log('💬 Conversation started — injecting context...');
+        setTimeout(injectContext, 800);
     });
 }
 
@@ -171,42 +185,21 @@ function initAgentforce() {
                 { scrt2URL: 'https://orgfarm-3a2cf22c1a-dev-ed.develop.my.salesforce-scrt.com' }
             );
 
+            // Log all available APIs after 3s (once bootstrap fully loads)
+            setTimeout(logBootstrapAPIs, 3000);
+
             window.addEventListener('onEmbeddedMessagingReady', function () {
-    console.log('✅ Agentforce Ready');
-
-    // Debug — log every single event that fires
-    const allEvents = [
-        'onEmbeddedMessagingReady',
-        'onEmbeddedMessagingConversationStarted',
-        'onEmbeddedMessagingInitialized',
-        'onEmbeddedMessagingChatEstablished',
-        'onEmbeddedMessagingConversationCreated',
-        'onEmbeddedMessagingBeforeConversationStarted'
-    ];
-
-    allEvents.forEach(function(eventName) {
-        window.addEventListener(eventName, function() {
-            console.log('🔔 Event fired:', eventName);
-        });
-    });
-
-    injectContextOnConversationStart();
-});
+                console.log('✅ Agentforce Ready');
+                injectContextOnConversationStart();
+            });
 
         } catch (e) {
             console.error('❌ Agentforce Init Error:', e);
         }
     };
 
-    script.onerror = function () {
-        console.error('❌ Failed to load Agentforce bootstrap script');
-    };
-
+    script.onerror = function () { console.error('❌ Failed to load bootstrap'); };
     document.body.appendChild(script);
 }
 
-
-// -------------------------------
-// Start
-// -------------------------------
 initAgentforce();
