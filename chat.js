@@ -31,47 +31,25 @@ function getPageContent() {
 // Send website context to agent
 // -------------------------------
 function sendWebsiteContext() {
+    if (!window.pageContext) return;
 
-    if (!window.pageContext) {
-        console.warn('No pageContext found');
-        return;
-    }
+    const data = window.pageContext.data || {};
+    const content = getPageContent();
+
+    const contextBlock = `[CONTEXT: page="${window.pageContext.title}" url="${window.location.href}" data=${JSON.stringify(data)} content="${content.substring(0, 1500)}"]`;
+
+    // Set as a hidden prechat field AND store for injection
+    window._pageContextString = contextBlock;
 
     try {
-
-        const contextPayload = {
-            page: window.pageContext.page,
-            title: window.pageContext.title,
-            url: window.location.href,
-            data: window.pageContext.data,
-            content: getPageContent()
-        };
-
-        console.log('Sending context:', contextPayload);
-
-        // Hidden fields
-        embeddedservice_bootstrap.prechatAPI
-        .setHiddenPrechatFields({
-
-            pageName: contextPayload.page,
-
-            pageTitle: contextPayload.title,
-
-            currentURL: contextPayload.url,
-
-            pageData: JSON.stringify(contextPayload.data),
-
-            websiteContent: contextPayload.content
+        embeddedservice_bootstrap.prechatAPI.setHiddenPrechatFields({
+            websiteContext: contextBlock   // single field, single variable
         });
-
-        console.log('✅ Website context sent');
-
-    } catch (err) {
-
-        console.error('❌ Failed sending context', err);
+        console.log('✅ Context set:', contextBlock);
+    } catch(e) {
+        console.error('❌ prechatAPI failed:', e);
     }
 }
-
 
 // -------------------------------
 // Initialize Agentforce
