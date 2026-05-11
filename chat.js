@@ -172,9 +172,26 @@ function initAgentforce() {
             );
 
             window.addEventListener('onEmbeddedMessagingReady', function () {
-                console.log('✅ Agentforce Ready');
-                injectContextOnConversationStart();
-            });
+    console.log('✅ Agentforce Ready');
+
+    // Debug — log every single event that fires
+    const allEvents = [
+        'onEmbeddedMessagingReady',
+        'onEmbeddedMessagingConversationStarted',
+        'onEmbeddedMessagingInitialized',
+        'onEmbeddedMessagingChatEstablished',
+        'onEmbeddedMessagingConversationCreated',
+        'onEmbeddedMessagingBeforeConversationStarted'
+    ];
+
+    allEvents.forEach(function(eventName) {
+        window.addEventListener(eventName, function() {
+            console.log('🔔 Event fired:', eventName);
+        });
+    });
+
+    injectContextOnConversationStart();
+});
 
         } catch (e) {
             console.error('❌ Agentforce Init Error:', e);
