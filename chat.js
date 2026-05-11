@@ -8,180 +8,128 @@
 // -------------------------------
 function getPageContent() {
     const clone = document.body.cloneNode(true);
-
     ['script', 'style', 'nav', 'footer', 'header', 'noscript']
-        .forEach(tag => {
-            clone.querySelectorAll(tag).forEach(el => el.remove());
-        });
-
-    const text = clone.innerText || clone.textContent || '';
-    return text.replace(/\s+/g, ' ').trim().substring(0, 1500);
+        .forEach(tag => clone.querySelectorAll(tag).forEach(el => el.remove()));
+    return (clone.innerText || clone.textContent || '')
+        .replace(/\s+/g, ' ').trim().substring(0, 1000);
 }
 
 
 // -------------------------------
-// Build context string from page
+// Build context string
 // -------------------------------
 function buildContextString() {
     const pageCtx = window.pageContext || {};
-    const data    = pageCtx.data    || {};
-    const content = getPageContent();
-
-    return [
-        `[SYSTEM CONTEXT]`,
-        `Page    : ${pageCtx.title || document.title}`,
-        `URL     : ${window.location.href}`,
-        `Data    : ${JSON.stringify(data)}`,
-        `Content : ${content}`,
-        `[END CONTEXT]`,
-        `Use the above to answer all user questions. Never say information is unavailable if it exists above.`
-    ].join('\n');
+    return `[SYSTEM CONTEXT]\n` +
+           `Page: ${pageCtx.title || document.title}\n` +
+           `URL: ${window.location.href}\n` +
+           `Data: ${JSON.stringify(pageCtx.data || {})}\n` +
+           `Content: ${getPageContent()}\n` +
+           `[END CONTEXT]\n` +
+           `Use only the above to answer user questions. Do not say information is unavailable if it exists above.`;
 }
 
 
 // -------------------------------
-// Log ALL available APIs
-// (run this to discover what exists)
+// Type into chat iframe and submit
 // -------------------------------
-function logAvailableAPIs() {
-    console.log('=== Agentforce Bootstrap API Discovery ===');
-    console.log('embeddedservice_bootstrap keys:', Object.keys(embeddedservice_bootstrap));
+function injectContextViaIframe() {
+    console.log('🔁 Starting iframe injection...');
 
-    if (embeddedservice_bootstrap.utilAPI) {
-        console.log('utilAPI keys:', Object.keys(embeddedservice_bootstrap.utilAPI));
-    } else {
-        console.warn('utilAPI: NOT available');
-    }
+    let attempts = 0;
 
-    if (embeddedservice_bootstrap.prechatAPI) {
-        console.log('prechatAPI keys:', Object.keys(embeddedservice_bootstrap.prechatAPI));
-    } else {
-        console.warn('prechatAPI: NOT available');
-    }
+    const interval = setInterval(function () {
+        attempts++;
 
-    if (embeddedservice_bootstrap.liveAgentAPI) {
-        console.log('liveAgentAPI keys:', Object.keys(embeddedservice_bootstrap.liveAgentAPI));
-    } else {
-        console.warn('liveAgentAPI: NOT available');
-    }
-}
+        // Give up after 10 seconds
+        if (attempts > 33) {
+            clearInterval(interval);
+            console.error('❌ Could not find chat input after 10s');
+            return;
+        }
 
-
-// -------------------------------
-// Try every known send method
-// -------------------------------
-function trySendMessage(text) {
-    const api = embeddedservice_bootstrap;
-
-    // Method 1 - utilAPI.sendMessage
-    if (api.utilAPI && typeof api.utilAPI.sendMessage === 'function') {
-        console.log('Using: utilAPI.sendMessage');
-        api.utilAPI.sendMessage(text);
-        return true;
-    }
-
-    // Method 2 - utilAPI.sendTextMessage
-    if (api.utilAPI && typeof api.utilAPI.sendTextMessage === 'function') {
-        console.log('Using: utilAPI.sendTextMessage');
-        api.utilAPI.sendTextMessage(text);
-        return true;
-    }
-
-    // Method 3 - messageAPI.sendMessage
-    if (api.messageAPI && typeof api.messageAPI.sendMessage === 'function') {
-        console.log('Using: messageAPI.sendMessage');
-        api.messageAPI.sendMessage(text);
-        return true;
-    }
-
-    // Method 4 - chatAPI.sendMessage
-    if (api.chatAPI && typeof api.chatAPI.sendMessage === 'function') {
-        console.log('Using: chatAPI.sendMessage');
-        api.chatAPI.sendMessage(text);
-        return true;
-    }
-
-    // Method 5 - direct on bootstrap
-    if (typeof api.sendMessage === 'function') {
-        console.log('Using: embeddedservice_bootstrap.sendMessage');
-        api.sendMessage(text);
-        return true;
-    }
-
-    console.error('❌ No sendMessage method found. Available API dump:');
-    logAvailableAPIs();
-    return false;
-}
-
-
-// -------------------------------
-// Inject context via iframe DOM
-// (ultimate fallback — directly
-//  types into the chat input)
-// -------------------------------
-function injectViaIframe(text) {
-    console.log('🔁 Trying iframe DOM injection fallback...');
-
-    const findChatInput = setInterval(function () {
+        // Search all iframes on the page
         const iframes = document.querySelectorAll('iframe');
+        console.log(`🔍 Attempt ${attempts}: found ${iframes.length} iframe(s)`);
+
         for (let i = 0; i < iframes.length; i++) {
+            let doc;
             try {
-                const doc = iframes[i].contentDocument || iframes[i].contentWindow.document;
-                if (!doc) continue;
+                doc = iframes[i].contentDocument || iframes[i].contentWindow.document;
+            } catch (e) {
+                console.warn(`⚠️ iframe[${i}] is cross-origin — cannot access DOM`);
+                continue;
+            }
 
-                // Look for textarea or input in the chat iframe
-                const input = doc.querySelector('textarea, input[type="text"]');
-                if (input) {
-                    clearInterval(findChatInput);
-                    console.log('✅ Found chat input in iframe');
+            if (!doc) continue;
 
-                    // Set value and dispatch events so the framework picks it up
-                    const nativeInputValueSetter = Object.getOwnPropertyDescriptor(
-                        window.HTMLTextAreaElement.prototype, 'value'
-                    ) || Object.getOwnPropertyDescriptor(
-                        iframes[i].contentWindow.HTMLTextAreaElement.prototype, 'value'
-                    );
+            // Find the text input inside the chat
+            const input = doc.querySelector(
+                'textarea, input[type="text"], [contenteditable="true"]'
+            );
 
-                    if (nativeInputValueSetter && nativeInputValueSetter.set) {
-                        nativeInputValueSetter.set.call(input, text);
-                    } else {
-                        input.value = text;
-                    }
+            if (!input) continue;
 
-                    input.dispatchEvent(new Event('input', { bubbles: true }));
-                    input.dispatchEvent(new Event('change', { bubbles: true }));
+            clearInterval(interval);
+            console.log(`✅ Found chat input in iframe[${i}]`);
 
-                    // Auto-submit after short delay
-                    setTimeout(function () {
-                        const sendBtn = doc.querySelector('button[title*="Send"], button[aria-label*="Send"], button[type="submit"]');
-                        if (sendBtn) {
-                            sendBtn.click();
-                            console.log('✅ Context submitted via iframe send button');
-                        } else {
-                            // Simulate Enter key
-                            input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', keyCode: 13, bubbles: true }));
-                            console.log('✅ Context submitted via Enter key');
-                        }
-                    }, 500);
+            const context = buildContextString();
 
-                    return;
+            // Set value using native setter (works with React/LWC frameworks)
+            try {
+                const proto = iframes[i].contentWindow.HTMLTextAreaElement?.prototype
+                           || iframes[i].contentWindow.HTMLInputElement?.prototype;
+                const setter = proto
+                    ? Object.getOwnPropertyDescriptor(proto, 'value')?.set
+                    : null;
+
+                if (setter) {
+                    setter.call(input, context);
+                } else {
+                    input.value = context;
                 }
             } catch (e) {
-                // Cross-origin iframe — can't access DOM
-                console.warn('⚠️ Cannot access iframe DOM (cross-origin):', e.message);
-                clearInterval(findChatInput);
-                console.error('❌ All injection methods exhausted. See API discovery above.');
+                input.value = context;
             }
-        }
-    }, 300);
 
-    // Stop trying after 5 seconds
-    setTimeout(function () { clearInterval(findChatInput); }, 5000);
+            // Trigger input events so the framework registers the value
+            input.dispatchEvent(new Event('focus',  { bubbles: true }));
+            input.dispatchEvent(new Event('input',  { bubbles: true }));
+            input.dispatchEvent(new Event('change', { bubbles: true }));
+
+            // Submit after short delay
+            setTimeout(function () {
+                // Try clicking the Send button first
+                const sendBtn = doc.querySelector(
+                    'button[title*="Send"], button[aria-label*="Send"], ' +
+                    'button[type="submit"], button.send-button, ' +
+                    '[data-key="send"], button[name="send"]'
+                );
+
+                if (sendBtn) {
+                    sendBtn.click();
+                    console.log('✅ Context submitted via Send button');
+                } else {
+                    // Fallback — simulate Enter key
+                    input.dispatchEvent(new KeyboardEvent('keydown', {
+                        key: 'Enter', keyCode: 13, bubbles: true, cancelable: true
+                    }));
+                    input.dispatchEvent(new KeyboardEvent('keyup', {
+                        key: 'Enter', keyCode: 13, bubbles: true
+                    }));
+                    console.log('✅ Context submitted via Enter key');
+                }
+            }, 600);
+
+            return; // found and handled
+        }
+
+    }, 300);
 }
 
 
 // -------------------------------
-// Main injection on chat open
+// Trigger injection when chat opens
 // -------------------------------
 function injectContextOnConversationStart() {
     let injected = false;
@@ -189,19 +137,9 @@ function injectContextOnConversationStart() {
     window.addEventListener('onEmbeddedMessagingConversationStarted', function () {
         if (injected) return;
         injected = true;
-
-        console.log('💬 Conversation started — discovering APIs...');
-        logAvailableAPIs(); // 👈 shows exactly what your bootstrap exposes
-
-        const contextString = buildContextString();
-        console.log('📦 Context to inject:\n', contextString);
-
-        setTimeout(function () {
-            const sent = trySendMessage(contextString);
-            if (!sent) {
-                injectViaIframe(contextString);
-            }
-        }, 800);
+        console.log('💬 Conversation started — injecting page context via iframe...');
+        // Wait for iframe to fully render before injecting
+        setTimeout(injectContextViaIframe, 1000);
     });
 }
 
@@ -219,9 +157,7 @@ function loadPageData() {
 // -------------------------------
 function initAgentforce() {
     const script = document.createElement('script');
-
-    script.src =
-        'https://orgfarm-3a2cf22c1a-dev-ed.develop.my.site.com/ESWSIAAAirlinesAgent1757863514494/assets/js/bootstrap.min.js';
+    script.src = 'https://orgfarm-3a2cf22c1a-dev-ed.develop.my.site.com/ESWSIAAAirlinesAgent1757863514494/assets/js/bootstrap.min.js';
 
     script.onload = function () {
         try {
@@ -232,9 +168,7 @@ function initAgentforce() {
                 '00DgL00000AGQdV',
                 'SIAA_Airlines_Agent',
                 'https://orgfarm-3a2cf22c1a-dev-ed.develop.my.site.com/ESWSIAAAirlinesAgent1757863514494',
-                {
-                    scrt2URL: 'https://orgfarm-3a2cf22c1a-dev-ed.develop.my.salesforce-scrt.com'
-                }
+                { scrt2URL: 'https://orgfarm-3a2cf22c1a-dev-ed.develop.my.salesforce-scrt.com' }
             );
 
             window.addEventListener('onEmbeddedMessagingReady', function () {
